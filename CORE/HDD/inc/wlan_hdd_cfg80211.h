@@ -148,6 +148,26 @@ typedef struct {
 #define WLAN_AKM_SUITE_FT_FILS_SHA384 0x000FAC11
 #endif
 
+#ifndef WLAN_AKM_SUITE_SAE
+#define WLAN_AKM_SUITE_SAE 0x000FAC08
+#endif
+
+#ifndef WLAN_AKM_SUITE_OWE
+#define WLAN_AKM_SUITE_OWE 0x000FAC12
+#endif
+
+/* For kernel version >= 5.2, driver needs to provide policy */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
+#define vendor_command_policy(__policy, __maxattr) \
+	.policy = __policy,                        \
+	.maxattr = __maxattr
+#define VENDOR_NLA_POLICY_NESTED(__policy) \
+	NLA_POLICY_NESTED(__policy)
+#else
+#define vendor_command_policy(__policy, __maxattr)
+#define VENDOR_NLA_POLICY_NESTED(__policy) {.type = NLA_NESTED}
+#endif /*End of (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) */
+
 /* Vendor id to be used in vendor specific command and events
  * to user space.
  * NOTE: The authoritative place for definition of QCA_NL80211_VENDOR_ID,
@@ -2948,6 +2968,8 @@ void wlan_hdd_cfg80211_set_key_wapi(hdd_adapter_t* pAdapter,
 #endif
 struct wiphy *wlan_hdd_cfg80211_wiphy_alloc(int priv_size);
 
+#define EXTSCAN_PARAM_MAX QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX
+
 int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)) && !defined(WITH_BACKPORTS)
                             struct net_device *dev,
@@ -3156,4 +3178,47 @@ int wlan_hdd_disconnect(hdd_adapter_t *pAdapter, u16 reason);
 #ifdef FEATURE_WLAN_DISABLE_CHANNEL_SWITCH
 int wlan_hdd_send_avoid_freq_for_dnbs(hdd_context_t *hdd_ctx, uint8_t op_chan);
 #endif
+
+#undef nla_parse
+#undef nla_parse_nested
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+static inline int wlan_cfg80211_nla_parse(struct nlattr **tb,
+					  int maxtype,
+					  const struct nlattr *head,
+					  int len,
+					  const struct nla_policy *policy)
+{
+	return nla_parse(tb, maxtype, head, len, policy);
+}
+
+static inline int
+wlan_cfg80211_nla_parse_nested(struct nlattr *tb[],
+			       int maxtype,
+			       const struct nlattr *nla,
+			       const struct nla_policy *policy)
+{
+	return nla_parse_nested(tb, maxtype, nla, policy);
+}
+#else
+static inline int wlan_cfg80211_nla_parse(struct nlattr **tb,
+					  int maxtype,
+					  const struct nlattr *head,
+					  int len,
+					  const struct nla_policy *policy)
+{
+	return nla_parse(tb, maxtype, head, len, policy, NULL);
+}
+
+static inline int
+wlan_cfg80211_nla_parse_nested(struct nlattr *tb[],
+			       int maxtype,
+			       const struct nlattr *nla,
+			       const struct nla_policy *policy)
+{
+	return nla_parse_nested(tb, maxtype, nla, policy, NULL);
+}
+#endif
+#define nla_parse(...) (obsolete, use wlan_cfg80211_nla_parse)
+#define nla_parse_nested(...) (obsolete, use wlan_cfg80211_nla_parse_nested)
+
 #endif

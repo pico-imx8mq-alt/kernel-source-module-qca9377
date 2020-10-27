@@ -1441,6 +1441,7 @@ static void __hdd_wmm_do_implicit_qos(struct work_struct *work)
       hdd_wmm_free_context(pQosContext);
 
       // fall through and start packets flowing
+      /* fallthrough */
    case SME_QOS_STATUS_SETUP_SUCCESS_NO_ACM_NO_APSD_RSP:
       // no ACM in effect, no need to setup U-APSD
    case SME_QOS_STATUS_SETUP_SUCCESS_APSD_SET_ALREADY:
@@ -1839,9 +1840,13 @@ hdd_wmm_classify_pkt(hdd_adapter_t* pAdapter, struct sk_buff *skb,
   ===========================================================================*/
 v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0))
+                                 , struct net_device *sb_dev
+#else
                                  , void *accel_priv
 #endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0))
                                  , select_queue_fallback_t fallback
 #endif
 )

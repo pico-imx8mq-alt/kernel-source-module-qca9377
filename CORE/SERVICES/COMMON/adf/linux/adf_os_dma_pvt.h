@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -42,6 +42,13 @@
 #include <adf_os_types.h>
 #include <adf_os_util.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+#define __adf_os_dma_alloc_noncoherent(dev, size, daddr, flag, attr) dma_alloc_attrs(dev, size, daddr, flag, attr)
+#define __adf_os_dma_free_noncoherent(dev, size, vddr, daddr, attr) dma_free_attrs(dev, size, vddr, daddr, attr)
+#else
+#define __adf_os_dma_alloc_noncoherent(dev, size, daddr, flag, attr) dma_alloc_noncoherent(dev, size, daddr, flag)
+#define __adf_os_dma_free_noncoherent(dev, size, vddr, daddr, attr) dma_free_noncoherent(dev, size, vddr, daddr)
+#endif
 /**
  * XXX:error handling
  *
@@ -74,13 +81,9 @@ __adf_os_dmamem_alloc(adf_os_device_t     osdev,
        vaddr = dma_alloc_coherent(osdev->dev, size, &lmap->seg[0].daddr,
                                   GFP_ATOMIC);
    else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
-       vaddr = dma_alloc_noncoherent(osdev->dev, size, &lmap->seg[0].daddr,
-                                     GFP_ATOMIC);
-#else
-       vaddr = dma_alloc_attrs(osdev->dev, size, &lmap->seg[0].daddr,
+       vaddr = __adf_os_dma_alloc_noncoherent(osdev->dev, size,
+                                     &lmap->seg[0].daddr,
                                      GFP_ATOMIC, DMA_ATTR_NON_CONSISTENT);
-#endif
 
    adf_os_assert(vaddr);
 
@@ -105,12 +108,9 @@ __adf_os_dmamem_free(adf_os_device_t    osdev, __adf_os_size_t size,
     if(coherent)
         dma_free_coherent(osdev->dev, size, vaddr, dmap->seg[0].daddr);
     else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
-        dma_free_noncoherent(osdev->dev, size, vaddr, dmap->seg[0].daddr);
-#else
-        dma_free_attrs(osdev->dev, size, vaddr, dmap->seg[0].daddr,
-               DMA_ATTR_NON_CONSISTENT);
-#endif
+        __adf_os_dma_free_noncoherent(osdev->dev, size, vaddr,
+                                      dmap->seg[0].daddr,
+                                      DMA_ATTR_NON_CONSISTENT);
 
     kfree(dmap);
 }

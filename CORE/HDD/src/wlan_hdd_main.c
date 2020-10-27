@@ -10828,9 +10828,13 @@ static void hdd_set_multicast_list(struct net_device *dev)
 static v_U16_t hdd_select_queue(struct net_device *dev,
                          struct sk_buff *skb
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0))
+		         , struct net_device *sb_dev
+#else
                          , void *accel_priv
 #endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0))
                          , select_queue_fallback_t fallback
 #endif
 )
@@ -11050,11 +11054,7 @@ static hdd_adapter_t* hdd_alloc_station_adapter(hdd_context_t *pHddCtx,
       pWlanDev->features |= NETIF_F_RXCSUM;
       hdd_set_station_ops( pAdapter->dev );
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
-      pWlanDev->destructor = free_netdev;
-#else
-      pWlanDev->priv_destructor = free_netdev;
-#endif
+      hdd_dev_setup_destructor(pWlanDev);
       pWlanDev->ieee80211_ptr = &pAdapter->wdev ;
       pWlanDev->tx_queue_len = HDD_NETDEV_TX_QUEUE_LEN;
       pAdapter->wdev.wiphy = pHddCtx->wiphy;
@@ -11127,11 +11127,7 @@ static hdd_adapter_t *hdd_alloc_monitor_adapter(hdd_context_t *pHddCtx,
 	   pwlan_dev->features |= NETIF_F_RXCSUM;
 	   hdd_set_monitor_ops(pAdapter->dev);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
-	   pwlan_dev->destructor = free_netdev;
-#else
-	   pwlan_dev->priv_destructor = free_netdev;
-#endif
+	   hdd_dev_setup_destructor(pwlan_dev);
 	   pwlan_dev->ieee80211_ptr = &pAdapter->wdev;
 	   pwlan_dev->tx_queue_len = HDD_NETDEV_TX_QUEUE_LEN;
 	   pAdapter->wdev.wiphy = pHddCtx->wiphy;
@@ -17990,18 +17986,6 @@ static bool unload_timer_started;
 #endif
 
 /**
- * hdd_unload_timer_init() - API to initialize unload timer
- *
- * initialize unload timer
- *
- * Return: None
- */
-static void hdd_unload_timer_init(void)
-{
-	init_timer(&unload_timer);
-}
-
-/**
  * hdd_unload_timer_del() - API to Delete unload timer
  *
  * Delete unload timer
@@ -18010,7 +17994,7 @@ static void hdd_unload_timer_init(void)
  */
 static void hdd_unload_timer_del(void)
 {
-	del_timer(&unload_timer);
+	adf_os_timer_cancel(&unload_timer);
 	unload_timer_started = false;
 }
 
@@ -18021,7 +18005,11 @@ static void hdd_unload_timer_del(void)
  *
  * Return: None
  */
-static void hdd_unload_timer_cb(unsigned long data)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+static void hdd_unload_timer_cb(struct timer_list *t)
+#else
+static void hdd_unload_timer_cb(void *data)
+#endif
 {
 	v_CONTEXT_t vos_context = NULL;
 	hdd_context_t *hdd_ctx = NULL;
@@ -18047,6 +18035,19 @@ static void hdd_unload_timer_cb(unsigned long data)
 }
 
 /**
+ * hdd_unload_timer_init() - API to initialize unload timer
+ *
+ * initialize unload timer
+ *
+ * Return: None
+ */
+static void hdd_unload_timer_init(void)
+{
+	adf_os_timer_init(NULL, &unload_timer,
+			  hdd_unload_timer_cb, NULL, ADF_NON_DEFERRABLE_TIMER);
+}
+
+/**
  * hdd_unload_timer_start() - API to start unload timer
  * @msec: timer interval in msec units
  *
@@ -18060,9 +18061,7 @@ static void hdd_unload_timer_start(int msec)
 		hddLog(VOS_TRACE_LEVEL_FATAL,
 			"%s: Starting unload timer when it's running!",
 			__func__);
-	unload_timer.expires = jiffies + msecs_to_jiffies(msec);
-	unload_timer.function = hdd_unload_timer_cb;
-	add_timer(&unload_timer);
+	adf_os_timer_start(&unload_timer, msec);
 	unload_timer_started = true;
 }
 /**---------------------------------------------------------------------------

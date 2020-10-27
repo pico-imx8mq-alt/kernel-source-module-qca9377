@@ -785,7 +785,7 @@ int iw_set_dot11p_channel_sched(struct net_device *dev,
 	return ret;
 }
 
-static const struct nla_policy qca_wlan_vendor_ocb_set_config_policy[
+const struct nla_policy qca_wlan_vendor_ocb_set_config_policy[
 		QCA_WLAN_VENDOR_ATTR_OCB_SET_CONFIG_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_OCB_SET_CONFIG_CHANNEL_COUNT] = {
 		.type = NLA_U32
@@ -816,7 +816,7 @@ static const struct nla_policy qca_wlan_vendor_ocb_set_config_policy[
 	},
 };
 
-static const struct nla_policy qca_wlan_vendor_ocb_set_utc_time_policy[
+const struct nla_policy qca_wlan_vendor_ocb_set_utc_time_policy[
 		QCA_WLAN_VENDOR_ATTR_OCB_SET_UTC_TIME_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_OCB_SET_UTC_TIME_VALUE] = {
 		.type = NLA_BINARY, .len = SIZE_UTC_TIME
@@ -826,7 +826,7 @@ static const struct nla_policy qca_wlan_vendor_ocb_set_utc_time_policy[
 	},
 };
 
-static const struct nla_policy qca_wlan_vendor_ocb_start_timing_advert_policy[
+const struct nla_policy qca_wlan_vendor_ocb_start_timing_advert_policy[
 		QCA_WLAN_VENDOR_ATTR_OCB_START_TIMING_ADVERT_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_OCB_START_TIMING_ADVERT_CHANNEL_FREQ] = {
 		.type = NLA_U32
@@ -836,7 +836,7 @@ static const struct nla_policy qca_wlan_vendor_ocb_start_timing_advert_policy[
 	},
 };
 
-static const struct nla_policy  qca_wlan_vendor_ocb_stop_timing_advert_policy[
+const struct nla_policy  qca_wlan_vendor_ocb_stop_timing_advert_policy[
 		QCA_WLAN_VENDOR_ATTR_OCB_STOP_TIMING_ADVERT_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_OCB_STOP_TIMING_ADVERT_CHANNEL_FREQ] = {
 		.type = NLA_U32
@@ -852,7 +852,7 @@ static const struct nla_policy qca_wlan_vendor_ocb_get_tsf_timer_resp[] = {
 	},
 };
 
-static const struct nla_policy qca_wlan_vendor_dcc_get_stats[] = {
+const struct nla_policy qca_wlan_vendor_dcc_get_stats[] = {
 	[QCA_WLAN_VENDOR_ATTR_DCC_GET_STATS_CHANNEL_COUNT] = {
 		.type = NLA_U32
 	},
@@ -870,13 +870,13 @@ static const struct nla_policy qca_wlan_vendor_dcc_get_stats_resp[] = {
 	},
 };
 
-static const struct nla_policy qca_wlan_vendor_dcc_clear_stats[] = {
+const struct nla_policy qca_wlan_vendor_dcc_clear_stats[] = {
 	[QCA_WLAN_VENDOR_ATTR_DCC_CLEAR_STATS_BITMAP] = {
 		.type = NLA_U32
 	},
 };
 
-static const struct nla_policy qca_wlan_vendor_dcc_update_ndl[
+const struct nla_policy qca_wlan_vendor_dcc_update_ndl[
 		QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_CHANNEL_COUNT] = {
 		.type = NLA_U32
@@ -988,13 +988,9 @@ static int __wlan_hdd_cfg80211_ocb_set_config(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_SET_CONFIG_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_SET_CONFIG_MAX,
 			data,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 			data_len, qca_wlan_vendor_ocb_set_config_policy)) {
-#else
-			data_len, qca_wlan_vendor_ocb_set_config_policy, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		return -EINVAL;
 	}
@@ -1230,13 +1226,10 @@ static int __wlan_hdd_cfg80211_ocb_set_utc_time(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_SET_UTC_TIME_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_OCB_SET_UTC_TIME_MAX,
 		      data,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 		      data_len, qca_wlan_vendor_ocb_set_utc_time_policy)) {
-#else
-		      data_len, qca_wlan_vendor_ocb_set_utc_time_policy, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		return -EINVAL;
 	}
@@ -1358,14 +1351,11 @@ __wlan_hdd_cfg80211_ocb_start_timing_advert(struct wiphy *wiphy,
 	timing_advert->vdev_id = adapter->sessionId;
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_START_TIMING_ADVERT_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_OCB_START_TIMING_ADVERT_MAX,
 		      data,
 		      data_len,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 		      qca_wlan_vendor_ocb_start_timing_advert_policy)) {
-#else
-		      qca_wlan_vendor_ocb_start_timing_advert_policy, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		goto fail;
 	}
@@ -1484,14 +1474,11 @@ __wlan_hdd_cfg80211_ocb_stop_timing_advert(struct wiphy *wiphy,
 	timing_advert->vdev_id = adapter->sessionId;
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_STOP_TIMING_ADVERT_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_OCB_STOP_TIMING_ADVERT_MAX,
 		      data,
 		      data_len,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 		      qca_wlan_vendor_ocb_stop_timing_advert_policy)) {
-#else
-		      qca_wlan_vendor_ocb_stop_timing_advert_policy, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		goto fail;
 	}
@@ -1851,14 +1838,10 @@ static int __wlan_hdd_cfg80211_dcc_get_stats(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_GET_STATS_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_GET_STATS_MAX,
 		      data,
 		      data_len,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 		      qca_wlan_vendor_dcc_get_stats)) {
-#else
-		      qca_wlan_vendor_dcc_get_stats, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		return -EINVAL;
 	}
@@ -2021,14 +2004,11 @@ static int __wlan_hdd_cfg80211_dcc_clear_stats(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_CLEAR_STATS_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_DCC_CLEAR_STATS_MAX,
 		      data,
 		      data_len,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 		      qca_wlan_vendor_dcc_clear_stats)) {
-#else
-		      qca_wlan_vendor_dcc_clear_stats, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		return -EINVAL;
 	}
@@ -2158,14 +2138,10 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_MAX,
 		      data,
 		      data_len,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 		      qca_wlan_vendor_dcc_update_ndl)) {
-#else
-		      qca_wlan_vendor_dcc_update_ndl, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid ATTR"));
 		return -EINVAL;
 	}

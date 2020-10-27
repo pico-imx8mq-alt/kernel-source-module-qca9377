@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, 2015-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, 2015-2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -47,6 +47,7 @@
 #include "vos_sched.h"
 #include <linux/rtc.h>
 #include "vos_cnss.h"
+#include <adf_os_timer.h>
 
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -111,10 +112,17 @@ static void tryAllowingSleep( VOS_TIMER_TYPE type )
   this parameter for LP32 and LP64 architectures.
 
   --------------------------------------------------------------------------*/
-
-static void vos_linux_timer_callback (unsigned long data)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+static void vos_linux_timer_callback (struct timer_list *t)
+#else
+static void vos_linux_timer_callback (void *data)
+#endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+   vos_timer_t *timer = from_timer(timer, t, platformInfo.Timer);
+#else
    vos_timer_t *timer = ( vos_timer_t *)data;
+#endif
    vos_msg_t msg;
    VOS_STATUS vStatus;
    unsigned long flags;
@@ -444,11 +452,11 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    // with arguments passed or with default values
    spin_lock_init(&timer->platformInfo.spinlock);
    if (VOS_TIMER_TYPE_SW == timerType)
-      init_timer_deferrable(&(timer->platformInfo.Timer));
+      adf_os_timer_init(NULL, &(timer->platformInfo.Timer),
+                        vos_linux_timer_callback, timer, ADF_DEFERRABLE_TIMER);
    else
-      init_timer(&(timer->platformInfo.Timer));
-   timer->platformInfo.Timer.function = vos_linux_timer_callback;
-   timer->platformInfo.Timer.data = (unsigned long)timer;
+      adf_os_timer_init(NULL, &(timer->platformInfo.Timer),
+                        vos_linux_timer_callback, timer, ADF_NON_DEFERRABLE_TIMER);
    timer->callback = callback;
    timer->userData = userData;
    timer->type = timerType;
@@ -475,11 +483,11 @@ VOS_STATUS vos_timer_init( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    // with arguments passed or with default values
    spin_lock_init(&timer->platformInfo.spinlock);
    if (VOS_TIMER_TYPE_SW == timerType)
-      init_timer_deferrable(&(timer->platformInfo.Timer));
+      adf_os_timer_init(NULL, &(timer->platformInfo.Timer),
+                        vos_linux_timer_callback, timer, ADF_DEFERRABLE_TIMER);
    else
-      init_timer(&(timer->platformInfo.Timer));
-   timer->platformInfo.Timer.function = vos_linux_timer_callback;
-   timer->platformInfo.Timer.data = (unsigned long)timer;
+      adf_os_timer_init(NULL, &(timer->platformInfo.Timer),
+                        vos_linux_timer_callback, timer, ADF_NON_DEFERRABLE_TIMER);
    timer->callback = callback;
    timer->userData = userData;
    timer->type = timerType;
@@ -868,9 +876,9 @@ v_TIME_t vos_timer_get_system_ticks( v_VOID_t )
   ------------------------------------------------------------------------*/
 v_TIME_t vos_timer_get_system_time( v_VOID_t )
 {
-   struct timeval tv;
-   do_gettimeofday(&tv);
-   return tv.tv_sec*1000 + tv.tv_usec/1000;
+   struct timespec64 tv;
+   ktime_get_real_ts64(&tv);
+   return tv.tv_sec*1000 + tv.tv_nsec/1000000;
 }
 
 /**
@@ -880,34 +888,34 @@ v_TIME_t vos_timer_get_system_time( v_VOID_t )
  */
 unsigned long vos_get_time_of_the_day_ms(void)
 {
-	struct timeval tv;
+	struct timespec64 tv;
 	unsigned long local_time;
 	struct rtc_time tm;
 
-	do_gettimeofday(&tv);
+	ktime_get_real_ts64(&tv);
 
 	local_time = (uint32_t)(tv.tv_sec -
 		(sys_tz.tz_minuteswest * 60));
 	rtc_time_to_tm(local_time, &tm);
 	return ((tm.tm_hour * 60 * 60 * 1000) +
 		(tm.tm_min *60 * 1000) + (tm.tm_sec * 1000)+
-		(tv.tv_usec/1000));
+		(tv.tv_nsec/1000000));
 }
 
 void vos_get_time_of_the_day_in_hr_min_sec_usec(char *tbuf, int len)
 {
-       struct timeval tv;
+       struct timespec64 tv;
        struct rtc_time tm;
        unsigned long local_time;
 
        /* Format the Log time R#: [hr:min:sec.microsec] */
-       do_gettimeofday(&tv);
+       ktime_get_real_ts64(&tv);
        /* Convert rtc to local time */
        local_time = (u32)(tv.tv_sec - (sys_tz.tz_minuteswest * 60));
        rtc_time_to_tm(local_time, &tm);
        snprintf(tbuf, len,
                "[%02d:%02d:%02d.%06lu] ",
-               tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_usec);
+               tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_nsec/1000);
 }
 
 /**

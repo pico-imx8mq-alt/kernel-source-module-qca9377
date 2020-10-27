@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -36,7 +36,7 @@
 #include "sme_nan_datapath.h"
 
 /* NLA policy */
-static const struct nla_policy
+const struct nla_policy
 qca_wlan_vendor_ndp_policy[QCA_WLAN_VENDOR_ATTR_NDP_PARAMS_MAX + 1] = {
 	[QCA_WLAN_VENDOR_ATTR_NDP_SUBCMD] = { .type = NLA_U32 },
 	[QCA_WLAN_VENDOR_ATTR_NDP_TRANSACTION_ID] = { .type = NLA_U16 },
@@ -1928,13 +1928,9 @@ static int __wlan_hdd_cfg80211_process_ndp_cmd(struct wiphy *wiphy,
 		hddLog(LOGE, FL("NAN datapath is not enabled"));
 		return -EPERM;
 	}
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_NDP_PARAMS_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_NDP_PARAMS_MAX,
 			data, data_len,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 			qca_wlan_vendor_ndp_policy)) {
-#else
-			qca_wlan_vendor_ndp_policy, NULL)) {
-#endif
 		hddLog(LOGE, FL("Invalid NDP vendor command attributes"));
 		return -EINVAL;
 	}
